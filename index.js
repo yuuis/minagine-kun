@@ -2,7 +2,7 @@ const puppeteer = require('puppeteer');
 const {minagine, key, slack} = require('./credentials');
 const moment = require('moment-timezone');
 const axios = require('axios');
-​
+
 async function postToSlack(text) {
   await axios
     .post(slack.url, {text})
@@ -32,23 +32,23 @@ async function postToSlack(text) {
       console.log('[slack] error: config:', error.config);
     })
 }
-​
+
 async function getBrowserPage() {
   // Launch headless Chrome. Turn off sandbox so Chrome can run under root.
   const browser = await puppeteer.launch({headless: true, args: ['--no-sandbox']});
   return browser.newPage();
 }
-​
+
 async function setValue(page, selector, text) {
   await page.$eval(selector, (el, text) => el.value = text, text);
   // console.log(`[setValue] ${selector} <- ${text}`);
 }
-​
+
 function minutes(str) {
   const [hour, minute] = str.split(':').map(s => parseInt(s));
   return hour * 60 + minute;
 }
-​
+
 function minutesToString(minutes) {
   const minutesAs = Math.abs(minutes);
   const hour = Math.floor(minutesAs / 60).toString();
@@ -56,7 +56,7 @@ function minutesToString(minutes) {
   const sign = minutes < 0 ? '-' : '+';
   return `${sign}${hour}:${minute}`
 }
-​
+
 async function latestDatetime(page) {
   const row = await Promise.all([
     page.$eval('#input_area > form > table.none_sortable_table > tbody > tr:nth-child(1) > td:nth-child(2)', el => el.innerText),
@@ -70,7 +70,7 @@ async function latestDatetime(page) {
   console.log(`latest datetime: ${datetimeFormatted}`);
   return {ope, datetime, datetimeFormatted};
 }
-​
+
 exports.minagine = async (req, res) => {
   // auth
   const x_token = req.header('x-token');
@@ -80,7 +80,7 @@ exports.minagine = async (req, res) => {
     res.status(401).send('401 Unauthorized');
     return
   }
-​
+
   // param
   const param = /\/(start|end)$/.exec(req.path);
   if (!param) {
@@ -101,7 +101,7 @@ exports.minagine = async (req, res) => {
     }
   }[method];
   console.log(`selector is ${operation.selector}`);
-​
+
   // init
   const page = await getBrowserPage();
   await page.emulate({
@@ -115,7 +115,7 @@ exports.minagine = async (req, res) => {
     },
     userAgent: '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36'
   });
-​
+
   // login
   await page.goto('https://tm.minagine.net/index.html');
   console.log('https://tm.minagine.net/index.html');
@@ -124,11 +124,11 @@ exports.minagine = async (req, res) => {
   await setValue(page, '#user_password', minagine.password);
   await page.$eval('#login_form > div > div:nth-child(2) > div:nth-child(5) > input', el => el.click());
   console.log('logged in');
-​
+
   // move to registration page
   await page.goto('https://tm.minagine.net/mypage/list', {waitUntil: 'networkidle2'});
   console.log('https://tm.minagine.net/mypage/list');
-​
+
   // check last registration
   const {datetime: lastDatetime, datetimeFormatted: lastDatetimeFormatted} = await latestDatetime(page);
   let minutesMargin = 5;
@@ -139,12 +139,12 @@ exports.minagine = async (req, res) => {
     res.status(200).send('Server Error. Last Operation is too new.');
     return
   }
-​
+
   // register
   await page.$eval(operation.selector, el => el.click());
   await page.goto('https://tm.minagine.net/mypage/list', {waitUntil: 'networkidle2'});
   console.log(`registered: ${method}`);
-​
+
   // confirm registration
   const {ope, datetime, datetimeFormatted} = await latestDatetime(page);
   // check operation
@@ -164,7 +164,7 @@ exports.minagine = async (req, res) => {
     return
   }
   await postToSlack(`*${ope}* at ${datetimeFormatted}`);
-​
+
   // normalize worktime
   await page.goto('https://tm.minagine.net/work/wrktimemngmntshtself/sht', {waitUntil: 'networkidle2'});
   console.log('https://tm.minagine.net/work/wrktimemngmntshtself/sht');
@@ -192,7 +192,7 @@ exports.minagine = async (req, res) => {
   // calculate and update table
   await page.$eval('#main_wide > form > div:nth-child(17) > input', el => el.click());
   console.log('changed time range');
-​
+
   // get worktime
   await page.waitForSelector('#table_wrktimesht > tbody > tr:nth-child(3) > td:nth-child(15) > span:nth-child(1)');
   const [worktimeStr, insufficientStr, extraStr] = await Promise.all([
@@ -205,14 +205,14 @@ exports.minagine = async (req, res) => {
   const netExtra = minutesToString(extra - insufficient);
   const worktimeFormatted = `*${worktimeStr}* in total, *${netExtra}* than the criterion`;
   console.log(worktimeFormatted);
-​
+
   // logout
   await page.$eval('#headlogin_ie > li.lastitem > a', el => el.click());
   console.log('logged out');
   await postToSlack(`${worktimeFormatted}`);
   res.send('done');
 };
-​
+
 // const imageBuffer = await page.screenshot();
 // res.set('Content-Type', 'image/png');
 // res.send(imageBuffer);
