@@ -65,7 +65,7 @@ async function latestDatetime(page) {
   ]);
   const [ope, d, t] = row.map(s => /^(?:<[^>]+><[^>]+>)?([^<]+)(?:<[^>]+><[^>]+>)?$/.exec(s)[1]);
   const datetime = moment.tz(d + t, 'YYYY/MM/DDHH:mm', 'Asia/Tokyo');
-  const datetimeFormatted = datetime.format('LLLL');
+  const datetimeFormatted = datetime.format('YYYY/MM/DD HH:mm');
   console.log(`latest operation: ${ope}`);
   console.log(`latest datetime: ${datetimeFormatted}`);
   return {ope, datetime, datetimeFormatted};
@@ -163,7 +163,9 @@ exports.minagine = async (req, res) => {
     res.status(200).send('Server Error. Latest Operation is too old than requested.');
     return
   }
-  await postToSlack(`*${ope}* at ${datetimeFormatted}`);
+
+  const operationName = ope === '勤務開始' ? 'Work Start' : 'Work End';
+  await postToSlack(`*${operationName}* at ${datetimeFormatted}`);
 
   // normalize worktime
   await page.goto('https://tm.minagine.net/work/wrktimemngmntshtself/sht', {waitUntil: 'networkidle2'});
@@ -186,7 +188,7 @@ exports.minagine = async (req, res) => {
       const newWorkStartString = newWorkStart.format('HHmm');
       await setValue(page, workStartSelector, newWorkStartString);
       await setValue(page, workEndSelector, '2200');
-      await postToSlack(`Worktime adjusting: *${workStartString}* → *${workEndString}* to *${newWorkStartString}* → *2200*`);
+      await postToSlack(`Worktime adjusting: \`${workStartString}\` → \`${workEndString}\` to \`${newWorkStartString}\` → \`2200\``);
     }
   }
   // calculate and update table
@@ -203,7 +205,7 @@ exports.minagine = async (req, res) => {
   console.log(`worktime: ${worktimeStr}, insufficient: ${insufficientStr}, extra: ${extraStr}`);
   const [insufficient, extra] = [insufficientStr, extraStr].map(str => minutes(str));
   const netExtra = minutesToString(extra - insufficient);
-  const worktimeFormatted = `*${worktimeStr}* in total, *${netExtra}* than the criterion`;
+  const worktimeFormatted = `\`${worktimeStr}\` in total, \`${netExtra}\` than the criterion`;
   console.log(worktimeFormatted);
 
   // logout
