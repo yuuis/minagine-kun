@@ -4,9 +4,9 @@ const puppeteer = require("puppeteer");
 const { minagine_config, key } = require("./credentials");
 import * as moment from "moment";
 import "moment-timezone";
-import * as functions from "firebase-functions";
 import { postToSlack } from "./slack";
 import { operations, OperationWithTime } from "./operation";
+import { Request, Response } from 'express'
 
 const getBrowserPage = async (): Promise<Page> => {
   // Launch headless Chrome. Turn off sandbox so Chrome can run under root.
@@ -64,8 +64,7 @@ const latestDatetime = async (page: Page): Promise<OperationWithTime> => {
 };
 
 // main function
-export const minagine = functions.https.onRequest(
-  async (req: functions.https.Request, res: functions.Response<any>) => {
+export const minagine = async (req: Request, res: Response) => {
     // exports.minagine = async (req, res) => {
     // auth
     const x_token = req.header("x-token");
@@ -271,5 +270,4 @@ export const minagine = functions.https.onRequest(
     console.log("logged out");
     await postToSlack(`${worktimeFormatted}`);
     res.send("done");
-  }
-);
+  };

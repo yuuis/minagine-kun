@@ -11,16 +11,12 @@
     "keyofStringsOnly": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {
-      "amplitude": ["typings/amplitude"]
-    }
+    "baseUrl": "./"
   },
   "include": [
-    "./index.ts"
+    "./src/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "**/*.spec.ts"
+    "./node_modules"
   ]
 }

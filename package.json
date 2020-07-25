@@ -1,13 +1,21 @@
 {
-  "name": "minagine",
+  "name": "function",
   "version": "0.0.1",
   "scripts": {
-    "lint": "tslint --project tsconfig.json",
-    "compile": "tsc",
-    "fmt": "prettier --write '*.ts'"
+    "lint": "node_modules/.bin/tslint --project tsconfig.json",
+    "compile": "node_modules/.bin/tsc",
+    "fmt": "prettier --write 'src/*.ts'",
+    "build": "node_modules/.bin/tslint --project tsconfig.json && node_modules/.bin/tsc",
+    "deploy": "gcloud  deploy $npm_package_config_function_name --runtime=$npm_package_config_runtime --region=$npm_package_config_region --trigger-http --project=$npm_package_config_gcp_project --allow-unauthenticated --memory=512MB"
+  },
+  "config": {
+    "function_name": "minagine",
+    "region": "asia-northeast1",
+    "gcp_project": "cv-test-234003",
+    "runtime": "nodejs12"
   },
   "engines": {
-    "node": "10"
+    "node": "12"
   },
   "dependencies": {
     "@types/axios": "^0.14.0",
@@ -15,8 +23,13 @@
     "@types/moment-timezone": "^0.5.13",
     "@types/node": "^14.0.26",
     "@types/puppeteer": "^3.0.1",
+    "@types/express": "^4.17.7",
     "firebase-functions": "^3.8.0",
-    "ts-node": "^8.10.2",
+    "google-cloud-functions-typescript": "^0.0.4",
+    "ts-node": "^8.10.2"
+  },
+  "devDependencies": {
+    "tslint": "^6.1.2",
     "typescript": "^3.9.7"
   }
 }
