@@ -1,42 +1,12 @@
 import { Page, UnwrapElementHandle } from "puppeteer";
 
 const puppeteer = require("puppeteer");
-const { minagine_config, key, slack_config } = require("./credentials");
+const { minagine_config, key } = require("./credentials");
 import * as moment from "moment";
 import "moment-timezone";
-import axios from "axios";
 import * as functions from "firebase-functions";
-
-const postToSlack = async (text: string): Promise<void> =>
-  await axios
-    .post(slack_config.url, { text })
-    .then((res) => {
-      console.log(`[slack] data: ${res.data}`);
-      console.log(`[slack] status: ${res.status}`);
-      console.log(`[slack] statusText: ${res.statusText}`);
-      console.log(`[slack] headers: ${res.headers}`);
-      console.log(`[slack] config: ${res.config}`);
-    })
-    .catch((error) => {
-      if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        console.log(`[slack] error: response.data: ${error.response.data}`);
-        console.log(`[slack] error: response.status: ${error.response.status}`);
-        console.log(
-          `[slack] error: response.headers: ${error.response.headers}`
-        );
-      }
-      // Something happened in setting up the request that triggered an Error
-      else if (error.request) {
-        // The request was made but no response was received
-        // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
-        // http.ClientRequest in node.js
-        console.log(`[slack] error: request: ${error.request}`);
-      } else console.log(`[slack] error: message: ${error.message}`);
-
-      console.log(`[slack] error: config: ${error.config}`);
-    });
+import { postToSlack } from "./slack";
+import { operations, OperationWithTime } from "./operation";
 
 const getBrowserPage = async (): Promise<Page> => {
   // Launch headless Chrome. Turn off sandbox so Chrome can run under root.
@@ -93,13 +63,7 @@ const latestDatetime = async (page: Page): Promise<OperationWithTime> => {
   return { ope, datetime, datetimeFormatted };
 };
 
-type OperationWithTime = {
-  ope: string;
-  datetime: moment.Moment;
-  datetimeFormatted: string;
-};
-
-// メイン
+// main function
 export const minagine = functions.https.onRequest(
   async (req: functions.https.Request, res: functions.Response<any>) => {
     // exports.minagine = async (req, res) => {
@@ -121,7 +85,7 @@ export const minagine = functions.https.onRequest(
       return;
     }
     const method = param[1];
-    const operation = method === 'start' ? operations.start : operations.end;
+    const operation = method === "start" ? operations.start : operations.end;
 
     console.log(`selector is ${operation.selector}`);
 
@@ -309,24 +273,3 @@ export const minagine = functions.https.onRequest(
     res.send("done");
   }
 );
-
-const operations: operationList = {
-  start: {
-    selector: "#button0",
-    name: "勤務開始",
-  },
-  end: {
-    selector: "#button1",
-    name: "勤務終了",
-  },
-};
-
-type operationList = {
-  start: selectorName;
-  end: selectorName;
-};
-
-type selectorName = {
-  selector: string;
-  name: string;
-};
