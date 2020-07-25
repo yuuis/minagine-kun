@@ -1,10 +1,22 @@
 {
   "name": "minagine",
   "version": "0.0.1",
+  "scripts": {
+    "lint": "tslint --project tsconfig.json",
+    "compile": "tsc",
+    "fmt": "prettier --write '*.ts'"
+  },
+  "engines": {
+    "node": "10"
+  },
   "dependencies": {
-    "axios": "^0.19.0",
-    "moment": "^2.24.0",
-    "moment-timezone": "^0.5.26",
-    "puppeteer": "^1.6.2"
+    "@types/axios": "^0.14.0",
+    "@types/moment": "^2.13.0",
+    "@types/moment-timezone": "^0.5.13",
+    "@types/node": "^14.0.26",
+    "@types/puppeteer": "^3.0.1",
+    "firebase-functions": "^3.8.0",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.7"
   }
 }
