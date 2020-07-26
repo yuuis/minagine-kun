@@ -1,3 +1,4 @@
 .idea
 node_modules/*
-credentials.json
+functions/credentials.json
+src/*.js

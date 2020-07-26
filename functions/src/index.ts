@@ -1,12 +1,14 @@
-import { Page, UnwrapElementHandle } from "puppeteer";
-
-const puppeteer = require("puppeteer");
-const { minagine_config, key } = require("./credentials");
+import * as functions from 'firebase-functions';
 import * as moment from "moment";
 import "moment-timezone";
+import { Page, UnwrapElementHandle } from "puppeteer";
+const puppeteer = require("puppeteer");
+
 import { postToSlack } from "./slack";
 import { operations, OperationWithTime } from "./operation";
-import { Request, Response } from 'express'
+
+const { minagine_config, key } = require("./credentials");
+
 
 const getBrowserPage = async (): Promise<Page> => {
   // Launch headless Chrome. Turn off sandbox so Chrome can run under root.
@@ -20,8 +22,8 @@ const getBrowserPage = async (): Promise<Page> => {
 const setValue = async (page: Page, selector: string, text: string) =>
   await page.$eval(
     selector,
-    (el: HTMLInputElement, text: UnwrapElementHandle<string>) =>
-      (el.value = text),
+    (el: HTMLInputElement, elText: UnwrapElementHandle<string>) =>
+      (el.value = elText),
     text
   );
 
@@ -30,11 +32,11 @@ const minutes = (str: string): number => {
   return hour * 60 + minute;
 };
 
-const minutesToString = (minutes: number): string => {
-  const minutesAs = Math.abs(minutes);
+const minutesToString = (mins: number): string => {
+  const minutesAs = Math.abs(mins);
   const hour = Math.floor(minutesAs / 60).toString();
   const minute = (minutesAs % 60).toString().padStart(2, "0");
-  const sign = minutes < 0 ? "-" : "+";
+  const sign = mins < 0 ? "-" : "+";
   return `${sign}${hour}:${minute}`;
 };
 
@@ -64,7 +66,7 @@ const latestDatetime = async (page: Page): Promise<OperationWithTime> => {
 };
 
 // main function
-export const minagine = async (req: Request, res: Response) => {
+export const minagine = functions.https.onRequest(async (req, res) => {
     // exports.minagine = async (req, res) => {
     // auth
     const x_token = req.header("x-token");
@@ -270,4 +272,4 @@ export const minagine = async (req: Request, res: Response) => {
     console.log("logged out");
     await postToSlack(`${worktimeFormatted}`);
     res.send("done");
-  };
+  });
