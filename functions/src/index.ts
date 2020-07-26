@@ -1,11 +1,11 @@
 import * as functions from 'firebase-functions';
-import * as moment from "moment";
-import "moment-timezone";
-import { Page, UnwrapElementHandle } from "puppeteer";
-const puppeteer = require("puppeteer");
+import * as moment from 'moment';
+import 'moment-timezone';
+import {Page, UnwrapElementHandle} from 'puppeteer';
+import {postToSlack} from './slack';
+import {operations, OperationWithTime} from './operation';
 
-import { postToSlack } from "./slack";
-import { operations, OperationWithTime } from "./operation";
+const puppeteer = require("puppeteer");
 
 const { minagine_config, key } = require("./credentials");
 
@@ -22,8 +22,8 @@ const getBrowserPage = async (): Promise<Page> => {
 const setValue = async (page: Page, selector: string, text: string) =>
   await page.$eval(
     selector,
-    (el: HTMLInputElement, elText: UnwrapElementHandle<string>) =>
-      (el.value = elText),
+    (el: Element, elText: UnwrapElementHandle<string>) =>
+      ((el as HTMLInputElement).value = elText),
     text
   );
 
@@ -42,22 +42,24 @@ const minutesToString = (mins: number): string => {
 
 const latestDatetime = async (page: Page): Promise<OperationWithTime> => {
   const row = await Promise.all([
-    page.$eval(
-      "#input_area > form > table.none_sortable_table > tbody > tr:nth-child(1) > td:nth-child(2)",
-      (el: HTMLElement) => el.innerText
-    ),
-    page.$eval(
-      "#input_area > form > table.none_sortable_table > tbody > tr:nth-child(1) > td:nth-child(3)",
-      (el: HTMLElement) => el.innerText
-    ),
-    page.$eval(
-      "#input_area > form > table.none_sortable_table > tbody > tr:nth-child(1) > td:nth-child(4)",
-      (el: HTMLElement) => el.innerText
-    ),
+    // なぜか`$eval`だと動かない。
+    page.evaluate((selector) => {
+      return document.querySelector(selector)?.innerText
+    }, "#input_area > form > table.none_sortable_table > tbody > tr:nth-child(1) > td:nth-child(2)"),
+    page.evaluate((selector) => {
+      return document.querySelector(selector)?.innerText
+    }, "#input_area > form > table.none_sortable_table > tbody > tr:nth-child(1) > td:nth-child(3)"),
+    page.evaluate((selector) => {
+      return document.querySelector(selector)?.innerText
+    }, "#input_area > form > table.none_sortable_table > tbody > tr:nth-child(1) > td:nth-child(4)"),
   ]);
   const [ope, d, t] = row.map(
-    (s) => /^(?:<[^>]+><[^>]+>)?([^<]+)(?:<[^>]+><[^>]+>)?$/.exec(s)[1]
+    (s) => {
+        const a = /^(?:<[^>]+><[^>]+>)?([^<]+)(?:<[^>]+><[^>]+>)?$/.exec(s);
+        return a != null ? a[1] : ""
+    }
   );
+
   const datetime = moment.tz(d + t, "YYYY/MM/DDHH:mm", "Asia/Tokyo");
   const datetimeFormatted = datetime.format("YYYY/MM/DD HH:mm");
   console.log(`latest operation: ${ope}`);
@@ -67,7 +69,6 @@ const latestDatetime = async (page: Page): Promise<OperationWithTime> => {
 
 // main function
 export const minagine = functions.https.onRequest(async (req, res) => {
-    // exports.minagine = async (req, res) => {
     // auth
     const x_token = req.header("x-token");
     if (x_token !== key) {
@@ -113,7 +114,7 @@ export const minagine = functions.https.onRequest(async (req, res) => {
     await setValue(page, "#user_password", minagine_config.password);
     await page.$eval(
       "#login_form > div > div:nth-child(2) > div:nth-child(5) > input",
-      (el: HTMLElement) => el.click()
+      el => (el as HTMLElement).click()
     );
     console.log("logged in");
 
@@ -144,7 +145,7 @@ export const minagine = functions.https.onRequest(async (req, res) => {
     }
 
     // register
-    await page.$eval(operation.selector, (el: HTMLElement) => el.click());
+    await page.$eval(operation.selector, el => (el as HTMLElement).click());
     await page.goto("https://tm.minagine.net/mypage/list", {
       waitUntil: "networkidle2",
     });
@@ -192,10 +193,10 @@ export const minagine = functions.https.onRequest(async (req, res) => {
     });
     console.log("https://tm.minagine.net/work/wrktimemngmntshtself/sht");
     // change time range
-    await page.$eval("#w", (el: HTMLInputElement) => (el.value = "全て"));
+    await page.$eval("#w", el => ((el as HTMLInputElement).value = "全て"));
     await page.$eval(
       "#main > form:nth-child(6) > div > table > tbody > tr > td.auto > input",
-      (el: HTMLElement) => el.click()
+      el => (el as HTMLElement).click()
     );
     await page.waitForSelector("#main_wide > form > div:nth-child(17) > input");
     // normalize worktime
@@ -205,7 +206,7 @@ export const minagine = functions.https.onRequest(async (req, res) => {
       }_wrk_strt_apply_time`;
       const workStartString = await page.$eval(
         workStartSelector,
-        (el: HTMLInputElement) => el.value
+        el => (el as HTMLInputElement).value
       );
       const workStart = moment.tz(workStartString, "HHmm", "Asia/Tokyo");
       const workEndSelector = `#model_${
@@ -213,7 +214,7 @@ export const minagine = functions.https.onRequest(async (req, res) => {
       }_wrk_end_apply_time`;
       const workEndString = await page.$eval(
         workEndSelector,
-        (el: HTMLInputElement) => el.value
+        el => (el as HTMLInputElement).value
       );
       const workEnd = moment.tz(workEndString, "HHmm", "Asia/Tokyo");
       const diff = workEnd.diff(
@@ -233,7 +234,7 @@ export const minagine = functions.https.onRequest(async (req, res) => {
     // calculate and update table
     await page.$eval(
       "#main_wide > form > div:nth-child(17) > input",
-      (el: HTMLElement) => el.click()
+      el => (el as HTMLElement).click()
     );
     console.log("changed time range");
 
@@ -244,15 +245,15 @@ export const minagine = functions.https.onRequest(async (req, res) => {
     const [worktimeStr, insufficientStr, extraStr] = await Promise.all([
       page.$eval(
         "#table_wrktimesht > tbody > tr:nth-child(3) > td:nth-child(15) > span:nth-child(1)",
-        (el: HTMLElement) => el.innerText
+        el => (el as HTMLElement).innerText
       ),
       page.$eval(
         "#table_wrktimesht > tbody > tr:nth-child(3) > td:nth-child(16) > span",
-        (el: HTMLElement) => el.innerText
+        el => (el as HTMLElement).innerText
       ),
       page.$eval(
         "#table_wrktimesht > tbody > tr:nth-child(3) > td:nth-child(17) > span:nth-child(1)",
-        (el: HTMLElement) => el.innerText
+        el => (el as HTMLElement).innerText
       ),
     ]);
     console.log(
@@ -266,8 +267,8 @@ export const minagine = functions.https.onRequest(async (req, res) => {
     console.log(worktimeFormatted);
 
     // logout
-    await page.$eval("#headlogin_ie > li.lastitem > a", (el: HTMLElement) =>
-      el.click()
+    await page.$eval("#headlogin_ie > li.lastitem > a", el =>
+        (el as HTMLElement).click()
     );
     console.log("logged out");
     await postToSlack(`${worktimeFormatted}`);
