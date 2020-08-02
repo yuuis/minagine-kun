@@ -1,0 +1,39 @@
+{
+  "name": "functions",
+  "version": "0.0.1",
+  "scripts": {
+    "lint": "tslint --project tsconfig.json",
+    "build": "tslint --project tsconfig.json && node_modules/.bin/tsc",
+    "compile": "node_modules/.bin/tsc",
+    "fmt": "prettier --write 'src/*.ts'",
+    "deploy": "firebase deploy --only functions",
+    "deploy-with-gcloud": "gcloud  deploy $npm_package_config_function_name --runtime=$npm_package_config_runtime --region=$npm_package_config_region --trigger-http --project=$npm_package_config_gcp_project --allow-unauthenticated --memory=512MB",
+    "logs": "firebase functions:log"
+  },
+  "main": "lib/index.js",
+  "config": {
+    "function_name": "minagine",
+    "region": "asia-northeast1",
+    "gcp_project": "",
+    "runtime": "nodejs12"
+  },
+  "engines": {
+    "node": "12"
+  },
+  "dependencies": {
+    "axios": "^0.19.2",
+    "firebase-admin": "^8.10.0",
+    "firebase-functions": "^3.8.0",
+    "moment": "^2.27.0",
+    "moment-timezone": "^0.5.31",
+    "puppeteer": "^5.2.1",
+    "ts-node": "^8.10.2"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.14.0",
+    "@types/node": "^14.0.26",
+    "@types/puppeteer": "^3.0.1",
+    "tslint": "^6.1.2",
+    "typescript": "^3.9.7"
+  }
+}
