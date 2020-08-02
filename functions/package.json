@@ -5,7 +5,7 @@
     "lint": "tslint --project tsconfig.json",
     "build": "tslint --project tsconfig.json && node_modules/.bin/tsc",
     "compile": "node_modules/.bin/tsc",
-    "fmt": "prettier --write 'functions/src/*.ts'",
+    "fmt": "prettier --write 'src/*.ts'",
     "deploy": "firebase deploy --only functions",
     "deploy-with-gcloud": "gcloud  deploy $npm_package_config_function_name --runtime=$npm_package_config_runtime --region=$npm_package_config_region --trigger-http --project=$npm_package_config_gcp_project --allow-unauthenticated --memory=512MB",
     "logs": "firebase functions:log"

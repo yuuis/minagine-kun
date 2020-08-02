@@ -3,3 +3,4 @@ node_modules/*
 functions/credentials.json
 functions/lib/*
 src/*.js
+*.log
