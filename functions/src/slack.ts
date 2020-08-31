@@ -1,5 +1,5 @@
-import axios from "axios";
-const { slack_config } = require("./credentials");
+import axios from 'axios';
+const { slack_config } = require('./credentials');
 
 export const postToSlack = async (text: string): Promise<void> =>
   await axios
