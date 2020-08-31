@@ -1,13 +1,13 @@
-import * as moment from "moment";
+import * as moment from 'moment';
 
 export const operations: operationList = {
   start: {
-    selector: "#button0",
-    name: "勤務開始",
+    selector: '#button0',
+    name: '勤務開始',
   },
   end: {
-    selector: "#button1",
-    name: "勤務終了",
+    selector: '#button1',
+    name: '勤務終了',
   },
 };
 
