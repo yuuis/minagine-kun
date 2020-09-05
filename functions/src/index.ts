@@ -1,18 +1,17 @@
 import * as functions from 'firebase-functions';
-import * as moment from 'moment';
 import 'moment-timezone';
 import { postToSlack } from './slack';
 import { operations } from './operation';
 import { runtimeOpts } from './runtimeOptions';
-import { getBrowserPage, setValue } from './utils/page';
-import { minutes, minutesToString } from './utils/time';
-import { login } from './minagine/login';
+import { getBrowserPage } from './utils/page';
+import {login, logout} from './minagine/auth';
 import {
   checkPassedRegistrationInterval,
   confirmRegistered,
   register,
 } from './minagine/registration';
 import { latestOperation } from './minagine/latestOperation';
+import {adjust, calculate} from './minagine/workTime';
 
 const { key } = require('./credentials');
 
@@ -41,9 +40,7 @@ export const minagine = functions
     const method = param[1];
     const operation = method === 'start' ? operations.start : operations.end;
 
-    console.log(`selector is ${operation.selector}`);
-
-    // init
+    // init page
     const page = await getBrowserPage();
     await page.emulate({
       viewport: {
@@ -80,104 +77,34 @@ export const minagine = functions
 
     // confirm registration
     await confirmRegistered(page, operation).catch(async (e) => {
-      // なんかする
       console.error(e);
       await postToSlack(`[ERROR] ${e}`);
       res.status(200).send(`${e}`);
       return;
     });
 
+    // post to slack registration
     const latestOpe = await latestOperation(page);
     const operationName =
       latestOpe.ope === '勤務開始' ? 'Work Start' : 'Work End';
     await postToSlack(`*${operationName}* at ${latestOpe.datetimeFormatted}`);
 
-    // TODO: separate to function (nomalize)
-    // normalize worktime
-    await page.goto('https://tm.minagine.net/work/wrktimemngmntshtself/sht', {
-      waitUntil: 'networkidle2',
-    });
-    console.log('https://tm.minagine.net/work/wrktimemngmntshtself/sht');
-    // change time range
-    await page.$eval('#w', (el) => ((el as HTMLInputElement).value = '全て'));
-    await page.$eval(
-      '#main > form:nth-child(6) > div > table > tbody > tr > td.auto > input',
-      (el) => (el as HTMLElement).click(),
-    );
-    await page.waitForSelector('#main_wide > form > div:nth-child(17) > input');
-    // normalize worktime
+    // adjust work time
     if (method === 'end') {
-      const workStartSelector = `#model_${
-        moment().date() - 1
-      }_wrk_strt_apply_time`;
-      const workStartString = await page.$eval(
-        workStartSelector,
-        (el) => (el as HTMLInputElement).value,
-      );
-      const workStart = moment.tz(workStartString, 'HHmm', 'Asia/Tokyo');
-      const workEndSelector = `#model_${
-        moment().date() - 1
-      }_wrk_end_apply_time`;
-      const workEndString = await page.$eval(
-        workEndSelector,
-        (el) => (el as HTMLInputElement).value,
-      );
-      const workEnd = moment.tz(workEndString, 'HHmm', 'Asia/Tokyo');
-      const diff = workEnd.diff(
-        moment.tz('2200', 'HHmm', 'Asia/Tokyo'),
-        'minutes',
-      );
-      if (diff > 0) {
-        const newWorkStart = workStart.subtract({ minute: diff });
-        const newWorkStartString = newWorkStart.format('HHmm');
-        await setValue(page, workStartSelector, newWorkStartString);
-        await setValue(page, workEndSelector, '2200');
-        await postToSlack(
-          `Worktime adjusting: \`${workStartString}\` → \`${workEndString}\` to \`${newWorkStartString}\` → \`2200\``,
-        );
-      }
+      await adjust(page).catch(async (e) => {
+        console.error(`failed to adjust work time. error: ${e}`);
+      });
     }
 
-    // TODO: separate to function (calculate / update table)
-    // calculate and update table
-    await page.$eval('#main_wide > form > div:nth-child(17) > input', (el) =>
-      (el as HTMLElement).click(),
-    );
-    console.log('changed time range');
-
-    // get worktime
-    await page.waitForSelector(
-      '#table_wrktimesht > tbody > tr:nth-child(3) > td:nth-child(15) > span:nth-child(1)',
-    );
-    const [worktimeStr, insufficientStr, extraStr] = await Promise.all([
-      page.$eval(
-        '#table_wrktimesht > tbody > tr:nth-child(3) > td:nth-child(15) > span:nth-child(1)',
-        (el) => (el as HTMLElement).innerText,
-      ),
-      page.$eval(
-        '#table_wrktimesht > tbody > tr:nth-child(3) > td:nth-child(16) > span',
-        (el) => (el as HTMLElement).innerText,
-      ),
-      page.$eval(
-        '#table_wrktimesht > tbody > tr:nth-child(3) > td:nth-child(17) > span:nth-child(1)',
-        (el) => (el as HTMLElement).innerText,
-      ),
-    ]);
-    console.log(
-      `worktime: ${worktimeStr}, insufficient: ${insufficientStr}, extra: ${extraStr}`,
-    );
-    const [insufficient, extra] = [insufficientStr, extraStr].map((str) =>
-      minutes(str),
-    );
-    const netExtra = minutesToString(extra - insufficient);
-    const worktimeFormatted = `\`${worktimeStr}\` in total, \`${netExtra}\` than the criterion`;
-    console.log(worktimeFormatted);
+    // calculate
+    await calculate(page).catch(async (e) =>{
+      console.error(`failed to calculate work time. error: ${e}`);
+    });
 
     // logout
-    await page.$eval('#headlogin_ie > li.lastitem > a', (el) =>
-      (el as HTMLElement).click(),
-    );
-    console.log('logged out');
-    await postToSlack(`${worktimeFormatted}`);
+    await logout(page).catch(async (e) =>{
+      console.error(`failed to logout. error: ${e}`);
+    });
+
     res.send('done');
   });

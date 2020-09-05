@@ -2,6 +2,7 @@ import {Page} from 'puppeteer';
 import {OperationWithTime} from '../operation';
 import * as moment from 'moment';
 import {moveMyPage} from './pages';
+import {Selectors} from './selectors';
 
 export const latestOperation = async (page: Page): Promise<OperationWithTime> => {
   const myPage = await moveMyPage(page);
@@ -9,13 +10,13 @@ export const latestOperation = async (page: Page): Promise<OperationWithTime> =>
   const row = await Promise.all([
     myPage.evaluate((selector) => {
       return document.querySelector(selector)?.innerText;
-    }, '#input_area > form > table.none_sortable_table > tbody > tr:nth-child(1) > td:nth-child(2)'),
+    }, Selectors.lastOperationName),
     myPage.evaluate((selector) => {
       return document.querySelector(selector)?.innerText;
-    }, '#input_area > form > table.none_sortable_table > tbody > tr:nth-child(1) > td:nth-child(3)'),
+    }, Selectors.lastOperationDate),
     myPage.evaluate((selector) => {
       return document.querySelector(selector)?.innerText;
-    }, '#input_area > form > table.none_sortable_table > tbody > tr:nth-child(1) > td:nth-child(4)'),
+    }, Selectors.lastOperationTime),
   ]);
   const [ope, d, t] = row.map((s) => {
     const a = /^(?:<[^>]+><[^>]+>)?([^<]+)(?:<[^>]+><[^>]+>)?$/.exec(s);

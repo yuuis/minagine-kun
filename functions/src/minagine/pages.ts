@@ -8,7 +8,7 @@ export enum Pages {
 
 export const moveMyPage = async (page: Page): Promise<Page> => movePage(page, Pages.mypage);
 
-export const moveWorkTimeManagement = async (page: Page): Promise<Page> => movePage(page, Pages.workTimeManagement);
+export const moveWorkTimeManagementPage = async (page: Page): Promise<Page> => movePage(page, Pages.workTimeManagement);
 
 const movePage = async (page: Page, target: string): Promise<Page> => {
   if (!(page.url() === target)) {
