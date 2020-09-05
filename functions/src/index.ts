@@ -1,71 +1,17 @@
 import * as functions from 'firebase-functions';
 import * as moment from 'moment';
 import 'moment-timezone';
-import { Page, UnwrapElementHandle } from 'puppeteer';
 import { postToSlack } from './slack';
-import { operations, OperationWithTime } from './operation';
-
-const puppeteer = require('puppeteer');
+import { operations } from './operation';
+import {runtimeOpts} from "./runtimeOptions";
+import {getBrowserPage, setValue} from './utils/page';
+import {latestDatetime, minutes, minutesToString} from './utils/time';
 
 const { minagine_config, key } = require('./credentials');
 
-const getBrowserPage = async (): Promise<Page> => {
-  // Launch headless Chrome. Turn off sandbox so Chrome can run under root.
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox'],
-  });
-  return browser.newPage();
-};
-
-const setValue = async (page: Page, selector: string, text: string) =>
-  await page.$eval(
-    selector,
-    (el: Element, elText: UnwrapElementHandle<string>) =>
-      ((el as HTMLInputElement).value = elText),
-    text
-  );
-
-const minutes = (str: string): number => {
-  const [hour, minute] = str.split(':').map((s) => parseInt(s));
-  return hour * 60 + minute;
-};
-
-const minutesToString = (mins: number): string => {
-  const minutesAs = Math.abs(mins);
-  const hour = Math.floor(minutesAs / 60).toString();
-  const minute = (minutesAs % 60).toString().padStart(2, '0');
-  const sign = mins < 0 ? '-' : '+';
-  return `${sign}${hour}:${minute}`;
-};
-
-const latestDatetime = async (page: Page): Promise<OperationWithTime> => {
-  const row = await Promise.all([
-    // なぜか`$eval`だと動かない。
-    page.evaluate((selector) => {
-      return document.querySelector(selector)?.innerText;
-    }, '#input_area > form > table.none_sortable_table > tbody > tr:nth-child(1) > td:nth-child(2)'),
-    page.evaluate((selector) => {
-      return document.querySelector(selector)?.innerText;
-    }, '#input_area > form > table.none_sortable_table > tbody > tr:nth-child(1) > td:nth-child(3)'),
-    page.evaluate((selector) => {
-      return document.querySelector(selector)?.innerText;
-    }, '#input_area > form > table.none_sortable_table > tbody > tr:nth-child(1) > td:nth-child(4)'),
-  ]);
-  const [ope, d, t] = row.map((s) => {
-    const a = /^(?:<[^>]+><[^>]+>)?([^<]+)(?:<[^>]+><[^>]+>)?$/.exec(s);
-    return a != null ? a[1] : '';
-  });
-
-  const datetime = moment.tz(d + t, 'YYYY/MM/DDHH:mm', 'Asia/Tokyo');
-  const datetimeFormatted = datetime.format('YYYY/MM/DD HH:mm');
-  console.log(`latest operation: ${ope}`);
-  console.log(`latest datetime: ${datetimeFormatted}`);
-  return { ope, datetime, datetimeFormatted };
-};
 
 // main function
-export const minagine = functions.https.onRequest(async (req, res) => {
+export const minagine = functions.runWith(runtimeOpts).region('asia-northeast1').https.onRequest(async (req, res) => {
   // auth
   const x_token = req.header('x-token');
   if (x_token !== key) {
@@ -126,13 +72,11 @@ export const minagine = functions.https.onRequest(async (req, res) => {
     datetime: lastDatetime,
     datetimeFormatted: lastDatetimeFormatted,
   } = await latestDatetime(page);
-  let minutesMargin = 5;
-  console.log(
-    `[moment] ${minutesMargin} minutes before: ${moment()
-      .subtract(minutesMargin, 'minutes')
-      .format()}`
-  );
-  if (lastDatetime.isAfter(moment().subtract(minutesMargin, 'minutes'))) {
+  const registerMinutesMargin = 5;
+
+  console.log(`[moment] ${registerMinutesMargin} minutes before: ${moment().subtract(registerMinutesMargin, 'minutes').format()}`);
+
+  if (lastDatetime.isAfter(moment().subtract(registerMinutesMargin, 'minutes'))) {
     console.error(`Last Operation is too new: ${lastDatetimeFormatted}`);
     await postToSlack(
       `[ERROR] last operation is too new: ${lastDatetimeFormatted}`
@@ -143,6 +87,8 @@ export const minagine = functions.https.onRequest(async (req, res) => {
 
   // register
   await page.$eval(operation.selector, el => (el as HTMLElement).click());
+  // await page.evaluate((selector) => selector.click(), operation.selector)
+
   await page.goto('https://tm.minagine.net/mypage/list', {
     waitUntil: 'networkidle2',
   });
@@ -162,13 +108,13 @@ export const minagine = functions.https.onRequest(async (req, res) => {
     return;
   }
   // check registration time
-  minutesMargin = 2;
+  const checkMinutesMargin = 2;
   console.log(
-    `[moment] ${minutesMargin} minutes before: ${moment()
-      .subtract(minutesMargin, 'minutes')
+    `[moment] ${checkMinutesMargin} minutes before: ${moment()
+      .subtract(checkMinutesMargin, 'minutes')
       .format()}`
   );
-  if (datetime.isSameOrBefore(moment().subtract(minutesMargin, 'minutes'))) {
+  if (datetime.isSameOrBefore(moment().subtract(checkMinutesMargin, 'minutes'))) {
     console.error(
       `Latest Operation is too old than requested: ${datetimeFormatted}`
     );
