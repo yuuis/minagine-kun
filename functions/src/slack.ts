@@ -18,7 +18,7 @@ export const postToSlack = async (text: string): Promise<void> =>
         console.log(`[slack] error: response.data: ${error.response.data}`);
         console.log(`[slack] error: response.status: ${error.response.status}`);
         console.log(
-          `[slack] error: response.headers: ${error.response.headers}`
+          `[slack] error: response.headers: ${error.response.headers}`,
         );
       }
       // Something happened in setting up the request that triggered an Error
