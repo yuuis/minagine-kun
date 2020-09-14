@@ -14,7 +14,7 @@ export const checkPassedRegistrationInterval = async (page: Page): Promise<void>
   const registerMinutesMargin = 5;
 
   console.log(`[moment] ${registerMinutesMargin} minutes before: ${moment().subtract(registerMinutesMargin, 'minutes').format()}`);
-  if (!lastDatetime.isAfter(moment().subtract(registerMinutesMargin, 'minutes'))) {
+  if (lastDatetime.isAfter(moment().subtract(registerMinutesMargin, 'minutes'))) {
     await Promise.reject(`Last Operation is too new: ${lastDatetimeFormatted}`);
   }
 

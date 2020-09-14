@@ -2,7 +2,7 @@ import {Page} from 'puppeteer';
 import {setValue} from '../utils/page';
 import {Pages} from './pages';
 import {Selectors} from './selectors';
-const { minagine_config } = require('./credentials');
+const { minagine_config } = require('../credentials');
 
 // auth to minagine
 export const login = async (page: Page): Promise<void> => {
