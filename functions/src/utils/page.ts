@@ -1,4 +1,4 @@
-import {Page, UnwrapElementHandle} from "puppeteer";
+import {Page, UnwrapElementHandle} from 'puppeteer';
 const puppeteer = require('puppeteer');
 
 export const getBrowserPage = async (): Promise<Page> => {
@@ -15,5 +15,5 @@ export const setValue = async (page: Page, selector: string, text: string) =>
     selector,
     (el: Element, elText: UnwrapElementHandle<string>) =>
       ((el as HTMLInputElement).value = elText),
-    text
+    text,
   );
