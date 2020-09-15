@@ -6,8 +6,9 @@ import {postToSlack} from '../slack';
 import {minutes, minutesToString} from '../utils/time';
 import {Selectors} from './selectors';
 
-export const adjust = async (page: Page): Promise<void> => {
+export const adjust = async (page: Page): Promise<Page> => {
   const workTimePage = await moveWorkTimeManagementPage(page);
+  await workTimePage.waitForSelector(Selectors.show);
 
   await workTimePage.$eval(Selectors.targetWeek, (el) => ((el as HTMLInputElement).value = '全て'));
   await workTimePage.$eval(
@@ -55,13 +56,14 @@ export const adjust = async (page: Page): Promise<void> => {
       `WorkTime adjusted: \`${workStartString}\` → \`${workEndString}\` to \`${newWorkStartString}\` → \`2200\``,
     );
   }
+  return workTimePage;
 };
 
 export const calculate = async (page: Page): Promise<void> => {
   const workTimePage = await moveWorkTimeManagementPage(page);
+  await workTimePage.waitForSelector(Selectors.totalWorkTime);
 
   // get work time
-  await workTimePage.waitForSelector(Selectors.totalWorkTime);
   const [workTimeStr, insufficientStr, extraStr] = await Promise.all([
     workTimePage.$eval(
       Selectors.totalWorkTime,

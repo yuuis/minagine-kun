@@ -6,11 +6,10 @@ import {moveMyPage} from './pages';
 
 // check enough time passed from last registration
 export const checkPassedRegistrationInterval = async (page: Page): Promise<void> => {
-  const myPage = await moveMyPage(page);
   const {
     datetime: lastDatetime,
     datetimeFormatted: lastDatetimeFormatted,
-  } = await latestOperation(myPage);
+  } = await latestOperation(page);
   const registerMinutesMargin = 5;
 
   console.log(`[moment] ${registerMinutesMargin} minutes before: ${moment().subtract(registerMinutesMargin, 'minutes').format()}`);
@@ -22,18 +21,20 @@ export const checkPassedRegistrationInterval = async (page: Page): Promise<void>
 };
 
 // register operation
-export const register = async (page: Page, operation: selectorName, method: string): Promise<void> => {
+export const register = async (page: Page, operation: selectorName, method: string): Promise<Page> => {
   const myPage = await moveMyPage(page);
+  await myPage.waitForSelector(operation.selector);
 
   await myPage.$eval(operation.selector, el => (el as HTMLElement).click());
+  await myPage.waitForSelector(operation.selector);
 
   console.log(`registered: ${method}`);
+  return myPage;
 };
 
 // confirm last operation
-export const confirmRegistered = async (page: Page, operation: selectorName): Promise<void> => {
-  const myPage = await moveMyPage(page);
-  const { ope, datetime, datetimeFormatted } = await latestOperation(myPage);
+export const confirmRegistered = async (page: Page, operation: selectorName): Promise<Page> => {
+  const { ope, datetime, datetimeFormatted } = await latestOperation(page);
   const checkMinutesMargin = 2;
 
   // check operation
@@ -47,4 +48,5 @@ export const confirmRegistered = async (page: Page, operation: selectorName): Pr
   if (datetime.isSameOrBefore(moment().subtract(checkMinutesMargin, 'minutes'))) {
     await Promise.reject(`Latest Operation is too old than requested: ${datetimeFormatted}`);
   }
+  return page;
 };
