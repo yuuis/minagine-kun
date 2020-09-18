@@ -6,16 +6,17 @@ import {Selectors} from './selectors';
 
 export const latestOperation = async (page: Page): Promise<OperationWithTime> => {
   const myPage = await moveMyPage(page);
+  await myPage.waitForSelector(Selectors.lastOperationName, { timeout: 30000, visible: true });
 
   const row = await Promise.all([
     myPage.evaluate((selector) => {
-      return document.querySelector(selector)?.innerText;
+      return document.querySelector(selector).innerText;
     }, Selectors.lastOperationName),
     myPage.evaluate((selector) => {
-      return document.querySelector(selector)?.innerText;
+      return document.querySelector(selector).innerText;
     }, Selectors.lastOperationDate),
     myPage.evaluate((selector) => {
-      return document.querySelector(selector)?.innerText;
+      return document.querySelector(selector).innerText;
     }, Selectors.lastOperationTime),
   ]);
   const [ope, d, t] = row.map((s) => {

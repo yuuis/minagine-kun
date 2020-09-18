@@ -55,56 +55,40 @@ export const minagine = functions
         '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36',
     });
 
-    // login
-    await login(page).catch((e) => {
-      console.error(`failed to login. error: ${e}`);
-      return;
-    });
+    try {
+      // login
+      const indexPage = await login(page);
 
-    // check enough time passed from last registration
-    await checkPassedRegistrationInterval(page).catch(async (e) => {
-      console.error(e);
-      await postToSlack(`[ERROR] ${e}`);
-      res.status(200).send('Server Error. Last Operation is too new.');
-      return;
-    });
+      // check enough time passed from last registration
+      await checkPassedRegistrationInterval(indexPage);
 
-    // register
-    await register(page, operation, method).catch((e) => {
-      console.error(`failed to register. error: ${e}`);
-      return;
-    });
+      // register
+      const myPage = await register(page, operation, method);
 
-    // confirm registration
-    await confirmRegistered(page, operation).catch(async (e) => {
-      console.error(e);
+      // confirm registration
+      await confirmRegistered(myPage, operation);
+
+      // post to slack registration
+      const latestOpe = await latestOperation(myPage);
+      const operationName =
+        latestOpe.ope === '勤務開始' ? 'Work Start' : 'Work End';
+      await postToSlack(`*${operationName}* at ${latestOpe.datetimeFormatted}`);
+
+      // adjust work time
+      if (method === 'end') {
+        await adjust(myPage);
+      }
+
+      // calculate
+      await calculate(myPage);
+
+      // logout
+      await logout(myPage);
+      res.send('done');
+    } catch (e) {
+      console.error(`${e}`);
       await postToSlack(`[ERROR] ${e}`);
       res.status(200).send(`${e}`);
       return;
-    });
-
-    // post to slack registration
-    const latestOpe = await latestOperation(page);
-    const operationName =
-      latestOpe.ope === '勤務開始' ? 'Work Start' : 'Work End';
-    await postToSlack(`*${operationName}* at ${latestOpe.datetimeFormatted}`);
-
-    // adjust work time
-    if (method === 'end') {
-      await adjust(page).catch(async (e) => {
-        console.error(`failed to adjust work time. error: ${e}`);
-      });
     }
-
-    // calculate
-    await calculate(page).catch(async (e) =>{
-      console.error(`failed to calculate work time. error: ${e}`);
-    });
-
-    // logout
-    await logout(page).catch(async (e) =>{
-      console.error(`failed to logout. error: ${e}`);
-    });
-
-    res.send('done');
   });
