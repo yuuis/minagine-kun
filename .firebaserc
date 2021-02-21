@@ -1,6 +1,5 @@
 {
   "projects": {
-    "personal": "cv-test-234003",
-    "default": "cv-test-234003"
+    "default": "firebase project id"
   }
 }
