@@ -5,7 +5,7 @@
 
 必要なもの
 - SlackのWebhook URL
-- Firebase Project (利用するのはCloud Functionsのみ)
+- Firebase Project (利用するのはCloud Functions For Firebase のみ)
 
 ## How to use
 
@@ -37,12 +37,22 @@ cp functions/credentials_sample.json functions/credentials.json
 - `minagine_config`: 自身のアカウントのDomain/ID/Password
 - `slack_config.url`: 結果通知用。webhook_url。
 
-3. 自身のFirebaseプロジェクトのCloud Functionsにデプロイする。
+3.Firebaseコンソールで新規プロジェクトを作成する
+このときのIDを控えておき、CLIで以下のコマンドを実行する
+
 ```sh
-  vim .firebasrc # 自身のFirebaseプロジェクトのIDを書く
-  firebase use {your firebase project id}
+firebase use ${プロジェクトID}
+```
+またfirebasercのプロジェクトIDも以下のように修正する
+```json
+{
+  "projects": {
+    "default": "${プロジェクトID}"
+  }
+}
 ```
 
+4.Cloud Functions For Firebase にデプロイする。
 ```sh
   npm run deploy
 ```
