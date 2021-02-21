@@ -13,7 +13,7 @@ import {
 import { latestOperation } from './minagine/latestOperation';
 import {adjust, calculate} from './minagine/workTime';
 
-const { key } = require('./credentials');
+const { key } = require('../credentials');
 
 // main function
 export const minagine = functions
