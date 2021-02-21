@@ -47,7 +47,6 @@ firebase use ${プロジェクトID}
 ```json
 {
   "projects": {
-    "personal": "${プロジェクトID}",
     "default": "${プロジェクトID}"
   }
 }
